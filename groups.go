@@ -50,6 +50,9 @@ func findGroupByID(conn *redis.Client, chatID int64) (*groupSettings, error) {
 	if err != nil {
 		return nil, err
 	}
+	if len(gHash) == 0 {
+		return nil, nil
+	}
 	groupSettings := newGroupSettings(gHash)
 	return groupSettings, nil
 }
