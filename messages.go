@@ -46,12 +46,12 @@ func errorHappenedDuringProcess(chatID int64) tgbotapi.MessageConfig {
 }
 
 func hudorCanOnlySendFromCreator(chatID int64) tgbotapi.MessageConfig {
-	text := "🛡 دستور /hudor فقط برای سازنده اصلی گروه فعال می‌باشد!"
+	text := "🔐 هودور فقط از سازنده گروه حرف شنوی داره 🔐"
 	return tgbotapi.NewMessage(chatID, text)
 }
 
 func errorPermissionRequired(chatID int64) tgbotapi.MessageConfig {
-	text := "⛔️ دسترسی *Ban Users* جهت شروع فعالیت ربات الزامی می‌باشد. ⛔️"
+	text := "⛔️ هودور نیاز به اجازه شما داره، دسترسی *Ban users* رو به هودور بدین تا بتونه شروع کنه! ⛔️"
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = "Markdown"
 
@@ -59,7 +59,7 @@ func errorPermissionRequired(chatID int64) tgbotapi.MessageConfig {
 }
 
 func errorBotIsNotAdmin(chatID int64) tgbotapi.MessageConfig {
-	text := `⚠️ برای شروع فعالیت ابتدا من رو ادمین کنین ⚠️`
+	text := `⚠️ دست و پای هودور بسته هست ⛓، هودور رو ادمین گروه کنین و دسترسی *Ban users* رو بهش بدین تا از غل و زنجیر آزاد بشه ⚠️`
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = "Markdown"
 
@@ -67,11 +67,11 @@ func errorBotIsNotAdmin(chatID int64) tgbotapi.MessageConfig {
 }
 
 func hudorActivated(chatID int64) tgbotapi.MessageConfig {
-	text := `❇️ ربات با موفقیت فعال شد ❇️
+	text := `❇️ هودور با موفقیت فعال شد ❇️
 	💎 نکات 💎
 	1️⃣ جهت نمایش تنظیمات گروه دستور /settings را ارسال نمایید
 	2️⃣ سازنده گروه می‌تواند تنظیمات گروه را از طریق چت خصوصی تغییر دهد
-	3️⃣ در صورتی که می‌خواهید علاوه بر حذف ربات‌های مزاحم پیام آن‌ها را نیز پاک کنم دسترسی به *Delete messages* را برام فراهم کنین
+	3️⃣ در صورتی که می‌خواهین علاوه بر حذف ربات‌های مزاحم پیام آن‌ها را نیز پاک کنم دسترسی به *Delete messages* را برام فراهم کنین
 	
 	از گروه بدون ربات‌های مزاحم لذت ببرین 😎`
 	msg := tgbotapi.NewMessage(chatID, text)
