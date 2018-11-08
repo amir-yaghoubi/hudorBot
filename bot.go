@@ -279,59 +279,9 @@ func (s *BotService) processLeftUser(message tgbotapi.Message, leftChatMember tg
 	}
 }
 
-func (s *BotService) processBotMessage(message tgbotapi.Message) {
-	log := logrus.WithFields(logrus.Fields{
-		"bot":     message.From.ID,
-		"chat":    message.Chat.ID,
-		"message": message.MessageID,
-	})
-
-	isActive, err := isGroupActive(s.redis, message.Chat.ID)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if !isActive {
-		log.Info("skip processing bot message due to inActive group")
-		return
-	}
-
-	wlKey := whiteListKey(message.Chat.ID)
-	isApproved, err := s.redis.SIsMember(wlKey, message.From.UserName).Result()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if !isApproved {
-		log.Info("message from unauthorized bot detected")
-		ok, err := s.kickUser(message.Chat.ID, message.From.ID)
-		if err != nil {
-			log.Error(err)
-		} else if !ok {
-			log.Warn("cannot kick spammer bot! permission required")
-			err := changeGroupActiveStatus(s.redis, message.Chat.ID, false)
-			if err != nil {
-				log.Fatal(err)
-			}
-			log.Info("deactived group")
-			return
-		}
-
-		log.Infof("unauthorized bot removed from group")
-
-		ok, err = s.deleteMessage(message.Chat.ID, message.MessageID)
-		if err != nil {
-			log.Error(err)
-		} else if !ok {
-			log.Warn("cannot delete the message from group")
-		} else {
-			log.Info("deleted message from unauthorized bot")
-		}
-	}
-}
-
 func (s *BotService) Start(updates <-chan tgbotapi.Update) {
 	for update := range updates {
+		logrus.Infof("new update %+v\n", update)
 		if update.Message == nil {
 			continue
 		}
@@ -348,13 +298,8 @@ func (s *BotService) Start(updates <-chan tgbotapi.Update) {
 				go s.processLeftUser(*update.Message, *leftChatMember)
 				continue
 			}
-
-			if update.Message.From.IsBot {
-				go s.processBotMessage(*update.Message)
-				continue
-			}
 		}
-
+		logrus.Info(update.Message.Text)
 		if update.Message.IsCommand() {
 			go s.commandHandler.Handle(*update.Message)
 			continue
