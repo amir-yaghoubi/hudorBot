@@ -1,6 +1,8 @@
 package bot
 
 import (
+	"strings"
+
 	"github.com/go-redis/redis"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/sirupsen/logrus"
@@ -161,6 +163,12 @@ func (c *commandHandler) Handle(message tgbotapi.Message) {
 		"from": message.From.ID,
 		"chat": message.Chat.ID,
 	})
+
+	command := message.CommandWithAt()
+	if strings.IndexRune(command, '@') > -1 && strings.Index(command, c.bot.Self.UserName) < 0 {
+		log.Info("skip command, it's not direct command to us")
+		return
+	}
 
 	switch cmd {
 	case "hudor":
