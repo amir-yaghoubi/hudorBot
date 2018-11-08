@@ -156,15 +156,15 @@ func TestWhitelistKey(t *testing.T) {
 	}{
 		{
 			100000,
-			"allowed:100000",
+			"whitelist:100000",
 		},
 		{
 			-100000,
-			"allowed:-100000",
+			"whitelist:-100000",
 		},
 		{
 			0,
-			"allowed:0",
+			"whitelist:0",
 		},
 	}
 

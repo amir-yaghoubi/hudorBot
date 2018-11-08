@@ -149,7 +149,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 		})
 
 		if message.From.ID == groupSettings.Creator {
-			added, err := s.redis.SAdd(wlKey, user.ID).Result()
+			added, err := s.redis.SAdd(wlKey, user.UserName).Result()
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -169,7 +169,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 			continue
 		}
 
-		isApproved, err := s.redis.SIsMember(wlKey, user.ID).Result()
+		isApproved, err := s.redis.SIsMember(wlKey, user.UserName).Result()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -271,7 +271,7 @@ func (s *BotService) processLeftUser(message tgbotapi.Message, leftChatMember tg
 
 	if leftChatMember.IsBot {
 		wlKey := whiteListKey(message.Chat.ID)
-		_, err := s.redis.SRem(wlKey, leftChatMember.ID).Result()
+		_, err := s.redis.SRem(wlKey, leftChatMember.UserName).Result()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -297,7 +297,7 @@ func (s *BotService) processBotMessage(message tgbotapi.Message) {
 	}
 
 	wlKey := whiteListKey(message.Chat.ID)
-	isApproved, err := s.redis.SIsMember(wlKey, message.From.ID).Result()
+	isApproved, err := s.redis.SIsMember(wlKey, message.From.UserName).Result()
 	if err != nil {
 		log.Fatal(err)
 	}

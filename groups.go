@@ -8,7 +8,7 @@ import (
 )
 
 func whiteListKey(groupID int64) string {
-	return fmt.Sprintf("allowed:%d", groupID)
+	return fmt.Sprintf("whitelist:%d", groupID)
 }
 
 func groupKey(groupID int64) string {
