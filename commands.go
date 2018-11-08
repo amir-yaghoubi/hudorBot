@@ -121,6 +121,29 @@ func (c *commandHandler) hudor(message *tgbotapi.Message) {
 	}
 }
 
+func (c *commandHandler) settings(message *tgbotapi.Message) {
+	log := logrus.WithFields(logrus.Fields{
+		"cmd":  "settings",
+		"from": message.From.ID,
+		"chat": message.Chat.ID,
+	})
+
+	if message.Chat.IsSuperGroup() {
+		settings, err := findGroupByID(c.redis, message.Chat.ID)
+		if err != nil {
+			log.Fatal(err)
+		} else if settings == nil {
+			log.Warn("this group does not exist in redis")
+		}
+		log.Info("sending group informations to chat")
+		msg := groupInformations(message.Chat.ID, settings)
+		msg.ReplyToMessageID = message.MessageID
+		if _, err := c.bot.Send(msg); err != nil {
+			log.Error(err)
+		}
+	}
+}
+
 func (c *commandHandler) Handle(message tgbotapi.Message) {
 	cmd := message.Command()
 	log := logrus.WithFields(logrus.Fields{
@@ -132,6 +155,9 @@ func (c *commandHandler) Handle(message tgbotapi.Message) {
 	switch cmd {
 	case "hudor":
 		c.hudor(&message)
+		break
+	case "settings":
+		c.settings(&message)
 		break
 	case "groups":
 		break

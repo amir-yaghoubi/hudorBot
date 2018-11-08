@@ -69,7 +69,7 @@ func errorBotIsNotAdmin(chatID int64) tgbotapi.MessageConfig {
 
 func hudorActivated(chatID int64) tgbotapi.MessageConfig {
 	text := `❇️ ربات با موفقیت فعال شد ❇️
-	نکات:
+	💎 نکات 💎
 	1️⃣ جهت نمایش تنظیمات گروه دستور /settings را ارسال نمایید
 	2️⃣ سازنده گروه می‌تواند تنظیمات گروه را از طریق چت خصوصی تغییر دهد
 	3️⃣ در صورتی که می‌خواهید علاوه بر حذف ربات‌های مزاحم پیام آن‌ها را نیز پاک کنم دسترسی به *Delete messages* را برام فراهم کنین
@@ -89,5 +89,34 @@ func hodurAlreadyIsActive(chatID int64) tgbotapi.MessageConfig {
 func hodurOnlyActiveInSuperGroups(chatID int64) tgbotapi.MessageConfig {
 	text := `من فقط می‌تونم توی سوپرگروه ها فعالیت کنم ☹️😞
 	اگه می‌خوای بیشتر راجبم بدونی دستور /help رو بزن تا برات بگم`
+	return tgbotapi.NewMessage(chatID, text)
+}
+
+func groupInformations(chatID int64, group *groupSettings) tgbotapi.MessageConfig {
+	var text string
+	if group == nil {
+		text = "⚠️ در حال حاضر اطلاعاتی از این گروه در دست نیست ⚠️"
+	} else {
+		var activeStatus string
+		var warnStatus string
+
+		if group.IsActive {
+			activeStatus = "❇️ فعال ❇️"
+		} else {
+			activeStatus = "🚫 غیر فعال 🚫"
+		}
+
+		if group.ShowWarn {
+			warnStatus = "❇️ فعال ❇️"
+		} else {
+			warnStatus = "🚫 غیر فعال 🚫"
+		}
+
+		text = fmt.Sprintf(`گروه: %s
+		وضعیت فعالیت: %s
+		نمایش اخطار: %s
+		تعداد اخطار قبل از حذف کاربر: %d بار`, group.Title, activeStatus, warnStatus, group.Limit)
+	}
+
 	return tgbotapi.NewMessage(chatID, text)
 }

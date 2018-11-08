@@ -133,6 +133,11 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 		}
 	}
 
+	if groupSettings == nil {
+		log.Warn("group is not registered, skip processing")
+		return
+	}
+
 	for _, user := range users {
 		if user.ID == s.bot.Self.ID {
 			continue
