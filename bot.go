@@ -29,7 +29,7 @@ func (s *BotService) initGroup(message tgbotapi.Message) *groupSettings {
 		return nil
 	}
 
-	introduction := SuperGroupIntroduction(message.Chat.ID)
+	introduction := superGroupIntroduction(message.Chat.ID)
 	_, err = s.bot.Send(introduction)
 	if err != nil {
 		logrus.Warnf("cannot send introduction message into chat: %d, error: %v\n", message.Chat.ID, err)
@@ -202,7 +202,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 				log.Fatal(err)
 			}
 		} else if groupSettings.ShowWarn {
-			warnText := WarnUser(message.Chat.ID, usrWarns, groupSettings.Limit)
+			warnText := warnUser(message.Chat.ID, usrWarns, groupSettings.Limit)
 			_, err := s.bot.Send(warnText)
 			if err != nil {
 				log.Warnf("cannot send message in supergroup! err: %s", err)
