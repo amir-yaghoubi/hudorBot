@@ -23,3 +23,12 @@ func SuperGroupIntroduction(chatID int64) tgbotapi.MessageConfig {
 
 	return tgbotapi.NewMessage(chatID, text)
 }
+
+func botAddedToWhitelist(chatID int64, messageID int, username string) tgbotapi.MessageConfig {
+	text := fmt.Sprintf(`🤖 بات @%s به لیست ربات‌های مجاز به فعالیت افزوده شد. ✅`, username)
+	msg := tgbotapi.NewMessage(chatID, text)
+	msg.DisableNotification = true
+	msg.ReplyToMessageID = messageID
+
+	return msg
+}

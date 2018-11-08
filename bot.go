@@ -114,11 +114,19 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 		})
 
 		if message.From.ID == groupSettings.Creator {
-			_, err := s.redis.SAdd(wlKey, user.ID).Result()
+			added, err := s.redis.SAdd(wlKey, user.ID).Result()
 			if err != nil {
 				log.Fatal(err)
 			}
-			log.Info("bot added to whitelist (added by creator)")
+			if added > 0 {
+				log.Info("bot added to whitelist (added by creator)")
+
+				msg := botAddedToWhitelist(message.Chat.ID, message.MessageID, user.UserName)
+				_, err := s.bot.Send(msg)
+				if err != nil {
+					log.Warn("cannot send the message into group")
+				}
+			}
 			continue
 		}
 
