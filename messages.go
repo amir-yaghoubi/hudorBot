@@ -91,13 +91,14 @@ func hodurOnlyActiveInSuperGroups(chatID int64) tgbotapi.MessageConfig {
 	return tgbotapi.NewMessage(chatID, text)
 }
 
-func groupInformations(chatID int64, group *groupSettings) tgbotapi.MessageConfig {
+func groupInformations(chatID int64, group *groupSettings, bots []string) tgbotapi.MessageConfig {
 	var text string
 	if group == nil {
 		text = "⚠️ در حال حاضر اطلاعاتی از این گروه در دست نیست ⚠️"
 	} else {
 		var activeStatus string
 		var warnStatus string
+		var whitelistedBots string
 
 		if group.IsActive {
 			activeStatus = "❇️ فعال ❇️"
@@ -111,10 +112,31 @@ func groupInformations(chatID int64, group *groupSettings) tgbotapi.MessageConfi
 			warnStatus = "🚫 غیر فعال 🚫"
 		}
 
-		text = fmt.Sprintf(`گروه: %s
-		وضعیت فعالیت: %s
-		نمایش اخطار: %s
-		تعداد اخطار قبل از حذف کاربر: %d بار`, group.Title, activeStatus, warnStatus, group.Limit)
+		if len(bots) == 0 {
+			whitelistedBots = "🔘 هیچ رباتی مجاز به فعالیت نیست 🔘"
+		} else {
+			var botLimit int
+			if len(bots) > 20 {
+				botLimit = 20
+			} else {
+				botLimit = len(bots)
+			}
+
+			for _, bot := range bots[:botLimit] {
+				whitelistedBots += "▪️ @" + bot + "\n"
+			}
+
+			if len(bots) > 20 {
+				whitelistedBots += fmt.Sprintf("و %d بات دیگر", len(bots)-20)
+			}
+		}
+
+		text = fmt.Sprintf(`🔹 گروه: %s
+🔹 وضعیت فعالیت: %s
+🔹 نمایش اخطار: %s
+🔹 تعداد اخطارها قبل از حذف کاربر: %d بار
+🔹 بات‌های مجاز به فعالیت:
+%s`, group.Title, activeStatus, warnStatus, group.Limit, whitelistedBots)
 	}
 
 	return tgbotapi.NewMessage(chatID, text)

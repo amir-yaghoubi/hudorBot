@@ -135,8 +135,18 @@ func (c *commandHandler) settings(message *tgbotapi.Message) {
 		} else if settings == nil {
 			log.Warn("this group does not exist in redis")
 		}
+
+		var whitelistBots []string
+		if settings != nil {
+			wlKey := whiteListKey(message.Chat.ID)
+			whitelistBots, err = c.redis.SMembers(wlKey).Result()
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+
 		log.Info("sending group informations to chat")
-		msg := groupInformations(message.Chat.ID, settings)
+		msg := groupInformations(message.Chat.ID, settings, whitelistBots)
 		msg.ReplyToMessageID = message.MessageID
 		if _, err := c.bot.Send(msg); err != nil {
 			log.Error(err)
