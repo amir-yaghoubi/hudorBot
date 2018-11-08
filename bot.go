@@ -9,15 +9,18 @@ import (
 )
 
 func NewBotService(redis *redis.Client, bot *tgbotapi.BotAPI) *BotService {
+	commandHandler := NewCommandHandler(redis, bot)
 	return &BotService{
-		redis: redis,
-		bot:   bot,
+		redis:          redis,
+		bot:            bot,
+		commandHandler: commandHandler,
 	}
 }
 
 type BotService struct {
-	redis *redis.Client
-	bot   *tgbotapi.BotAPI
+	redis          *redis.Client
+	bot            *tgbotapi.BotAPI
+	commandHandler *commandHandler
 }
 
 // initGroup will set default settings for group
@@ -180,7 +183,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 
 		if !ok {
 			log.Warn("cannot kick spammer bot! permission required")
-			err := deactivateGroup(s.redis, message.Chat.ID)
+			err := changeGroupActiveStatus(s.redis, message.Chat.ID, false)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -204,7 +207,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 			}
 			if !ok {
 				log.Warn("cannot ban spammer user")
-				err := deactivateGroup(s.redis, message.Chat.ID)
+				err := changeGroupActiveStatus(s.redis, message.Chat.ID, false)
 				if err != nil {
 					log.Fatal(err)
 				}
@@ -301,7 +304,7 @@ func (s *BotService) processBotMessage(message tgbotapi.Message) {
 			log.Error(err)
 		} else if !ok {
 			log.Warn("cannot kick spammer bot! permission required")
-			err := deactivateGroup(s.redis, message.Chat.ID)
+			err := changeGroupActiveStatus(s.redis, message.Chat.ID, false)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -332,21 +335,24 @@ func (s *BotService) Start(updates <-chan tgbotapi.Update) {
 			newChatMembers := update.Message.NewChatMembers
 			if newChatMembers != nil {
 				go s.processNewUsers(*update.Message, *newChatMembers)
+				continue
 			}
 
 			leftChatMember := update.Message.LeftChatMember
 			if leftChatMember != nil {
 				go s.processLeftUser(*update.Message, *leftChatMember)
+				continue
 			}
 
 			if update.Message.From.IsBot {
 				go s.processBotMessage(*update.Message)
+				continue
 			}
 		}
 
-		if update.Message.Chat.IsPrivate() {
-			// TODO process commands
+		if update.Message.IsCommand() {
+			go s.commandHandler.Handle(*update.Message)
+			continue
 		}
-
 	}
 }

@@ -15,12 +15,18 @@ func groupKey(groupID int64) string {
 	return fmt.Sprintf("group:%d", groupID)
 }
 
-func deactivateGroup(conn *redis.Client, chatID int64) error {
+// TODO isBotApproved function
+
+func changeGroupActiveStatus(conn *redis.Client, chatID int64, isActive bool) error {
 	gpKey := groupKey(chatID)
-	return conn.HSet(gpKey, "isActive", "false").Err()
+	return conn.HSet(gpKey, "isActive", isActive).Err()
 }
 
-// TODO isBotApproved function
+func groupCreator(conn *redis.Client, chatID int64) (creator int, err error) {
+	gpKey := groupKey(chatID)
+	creator, err = conn.HGet(gpKey, "creator").Int()
+	return creator, err
+}
 
 func isGroupActive(conn *redis.Client, chatID int64) (bool, error) {
 	gpKey := groupKey(chatID)
