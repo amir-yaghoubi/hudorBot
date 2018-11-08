@@ -20,6 +20,23 @@ func deactivateGroup(conn *redis.Client, chatID int64) error {
 	return conn.HSet(gpKey, "isActive", "false").Err()
 }
 
+// TODO isBotApproved function
+
+func isGroupActive(conn *redis.Client, chatID int64) (bool, error) {
+	gpKey := groupKey(chatID)
+	isActiveString, err := conn.HGet(gpKey, "isActive").Result()
+	if err != nil {
+		return false, err
+	}
+
+	isActive, err := strconv.ParseBool(isActiveString)
+	if err != nil {
+		isActive = false
+	}
+
+	return isActive, nil
+}
+
 func findGroupByID(conn *redis.Client, chatID int64) (*groupSettings, error) {
 	// TODO check for empty groupHash and send back error?
 	gpKey := groupKey(chatID)

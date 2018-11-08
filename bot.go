@@ -79,6 +79,16 @@ func (s *BotService) kickUser(chatID int64, userID int) (Ok bool, err error) {
 	return response.Ok, err
 }
 
+func (s *BotService) deleteMessage(chatID int64, messageID int) (ok bool, err error) {
+	msg := tgbotapi.NewDeleteMessage(chatID, messageID)
+	response, err := s.bot.DeleteMessage(msg)
+	if response.ErrorCode == 400 {
+		return false, nil
+	}
+
+	return response.Ok, err
+}
+
 func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.User) {
 	log := logrus.WithFields(logrus.Fields{
 		"chat": message.Chat.ID,
@@ -244,8 +254,55 @@ func (s *BotService) processLeftUser(message tgbotapi.Message, leftChatMember tg
 	}
 }
 
-func (s *BotService) processSuperGroupMessages() {
+func (s *BotService) processBotMessage(message tgbotapi.Message) {
+	log := logrus.WithFields(logrus.Fields{
+		"bot":     message.From.ID,
+		"chat":    message.Chat.ID,
+		"message": message.MessageID,
+	})
 
+	isActive, err := isGroupActive(s.redis, message.Chat.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if !isActive {
+		log.Info("skip processing bot message due to inActive group")
+		return
+	}
+
+	wlKey := whiteListKey(message.Chat.ID)
+	isApproved, err := s.redis.SIsMember(wlKey, message.From.ID).Result()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if !isApproved {
+		log.Info("message from unauthorized bot detected")
+		ok, err := s.kickUser(message.Chat.ID, message.From.ID)
+		if err != nil {
+			log.Error(err)
+		} else if !ok {
+			log.Warn("cannot kick spammer bot! permission required")
+			err := deactivateGroup(s.redis, message.Chat.ID)
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Info("deactived group")
+			return
+		}
+
+		log.Infof("unauthorized bot removed from group")
+
+		ok, err = s.deleteMessage(message.Chat.ID, message.MessageID)
+		if err != nil {
+			log.Error(err)
+		} else if !ok {
+			log.Warn("cannot delete the message from group")
+		} else {
+			log.Info("deleted message from unauthorized bot")
+		}
+	}
 }
 
 func (s *BotService) Start(updates <-chan tgbotapi.Update) {
@@ -265,9 +322,9 @@ func (s *BotService) Start(updates <-chan tgbotapi.Update) {
 				go s.processLeftUser(*update.Message, *leftChatMember)
 			}
 
-			// TODO process normal message.
-			// 1) remove bot if detected
-			// 2) delete message
+			if update.Message.From.IsBot {
+				go s.processBotMessage(*update.Message)
+			}
 		}
 
 		if update.Message.Chat.IsPrivate() {
