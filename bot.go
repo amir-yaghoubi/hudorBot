@@ -23,21 +23,37 @@ type BotService struct {
 // initGroup will set default settings for group
 // and add this group to creator's group list
 func (s *BotService) initGroup(message tgbotapi.Message) *groupSettings {
+	log := logrus.WithFields(logrus.Fields{
+		"chat": message.Chat.ID,
+		"from": message.From.ID,
+	})
+
 	admins, err := s.bot.GetChatAdministrators(message.Chat.ChatConfig())
 	if err != nil {
-		logrus.Warnf("cannot retrieve chat: %d administrators! err: %v\n", message.Chat.ID, err)
+		log.Errorf("cannot retrieve chat administrators, err: %s\n", err)
 		return nil
 	}
 
 	introduction := superGroupIntroduction(message.Chat.ID)
 	_, err = s.bot.Send(introduction)
 	if err != nil {
-		logrus.Warnf("cannot send introduction message into chat: %d, error: %v\n", message.Chat.ID, err)
+		log.Errorf("cannot send introduction message into chat, error: %v\n", err)
 	}
 
 	creator := findCreator(admins)
 	if creator == nil {
-		logrus.Warnf("chat: %d does not have any creators 🤤!!\n", message.Chat.ID)
+		log.Error("this chat does not have any creators!")
+
+		msg := botCannotOperateWithoutCreator(message.Chat.ID)
+		_, err := s.bot.Send(msg)
+		if err != nil {
+			log.Error(err)
+		}
+
+		_, err = s.bot.LeaveChat(message.Chat.ChatConfig())
+		if err != nil {
+			log.Error(err)
+		}
 		return nil
 	}
 
@@ -58,7 +74,7 @@ func (s *BotService) initGroup(message tgbotapi.Message) *groupSettings {
 	pipe.HMSet(gpKey, settings.Map())
 	_, err = pipe.Exec()
 	if err != nil {
-		logrus.Fatal(err)
+		log.Fatal(err)
 	}
 
 	return &settings
@@ -92,7 +108,7 @@ func (s *BotService) deleteMessage(chatID int64, messageID int) (ok bool, err er
 func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.User) {
 	log := logrus.WithFields(logrus.Fields{
 		"chat": message.Chat.ID,
-		"user": message.From.ID,
+		"from": message.From.ID,
 	})
 
 	wlKey := whiteListKey(message.Chat.ID)
@@ -105,10 +121,11 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 	for _, user := range users {
 		if user.ID == s.bot.Self.ID {
 			settings := s.initGroup(message)
-			if settings != nil {
-				groupSettings = settings
-				log.Info("initilized group with default settings")
+			if settings == nil {
+				return
 			}
+			groupSettings = settings
+			log.Info("initilized group with default settings")
 			continue
 		}
 	}
@@ -119,7 +136,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 		}
 		log := logrus.WithFields(logrus.Fields{
 			"chat": message.Chat.ID,
-			"user": message.From.ID,
+			"from": message.From.ID,
 			"bot":  user.ID,
 		})
 
@@ -134,7 +151,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 				msg := botAddedToWhitelist(message.Chat.ID, message.MessageID, user.UserName)
 				_, err := s.bot.Send(msg)
 				if err != nil {
-					log.Warn("cannot send the message into group")
+					log.Errorf("cannot send the message into group, err: %s\n", err)
 				}
 			}
 			continue
@@ -157,7 +174,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 		log.Info("spam bot detected, trying to remove it")
 		ok, err := s.kickUser(message.Chat.ID, user.ID)
 		if err != nil {
-			log.Warn(err)
+			log.Error(err)
 			continue
 		}
 
@@ -182,7 +199,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 			log.Info("user reached to their warning limitations")
 			ok, err := s.kickUser(message.Chat.ID, message.From.ID)
 			if err != nil {
-				log.Warn(err)
+				log.Error(err)
 				continue
 			}
 			if !ok {
@@ -205,7 +222,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 			warnText := warnUser(message.Chat.ID, usrWarns, groupSettings.Limit)
 			_, err := s.bot.Send(warnText)
 			if err != nil {
-				log.Warnf("cannot send message in supergroup! err: %s", err)
+				log.Errorf("cannot send message in supergroup! err: %s", err)
 			}
 		}
 	}

@@ -25,10 +25,15 @@ func superGroupIntroduction(chatID int64) tgbotapi.MessageConfig {
 }
 
 func botAddedToWhitelist(chatID int64, messageID int, username string) tgbotapi.MessageConfig {
-	text := fmt.Sprintf(`🤖 بات @%s به لیست ربات‌های مجاز به فعالیت افزوده شد. ✅`, username)
+	text := fmt.Sprintf("🤖 بات @%s به لیست ربات‌های مجاز به فعالیت افزوده شد. ✅", username)
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.DisableNotification = true
 	msg.ReplyToMessageID = messageID
 
 	return msg
+}
+
+func botCannotOperateWithoutCreator(chatID int64) tgbotapi.MessageConfig {
+	text := fmt.Sprintf("⛔️ فعالیت در این گروه امکان پذیر نمی‌باشد. ⛔️\nدلیل: سازنده گروه باید در گروه حضور داشته باشد.")
+	return tgbotapi.NewMessage(chatID, text)
 }
