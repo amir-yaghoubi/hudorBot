@@ -260,43 +260,36 @@ func (c *commandHandler) Handle(message tgbotapi.Message) {
 	}
 }
 
-func (c *commandHandler) pageCallback(callback *tgbotapi.CallbackQuery, page string) {
+func (c *commandHandler) pageCallback(callback *tgbotapi.CallbackQuery, pageString string) {
 	log := logrus.WithFields(logrus.Fields{
 		"chat":     callback.From.ID,
-		"page":     page,
+		"page":     pageString,
 		"callback": "page",
 	})
 
-	key := stateKey(callback.From.ID)
-	err := c.redis.HSet(key, "page", page).Err()
+	page, err := strconv.ParseInt(pageString, 10, 64)
+	if err != nil || page < 1 {
+		page = 1
+	}
+
+	err = setStatePage(c.redis, callback.From.ID, int(page))
 	if err != nil {
 		log.Fatal(err)
 	}
 	log.Info("user state page changed")
-	p, _ := strconv.ParseInt(page, 10, 64)
-	if p < 1 {
-		p = 1
+
+	state := &State{
+		Page: int(page),
 	}
-	groups, pageCount, err := adminGroups(c.redis, callback.From.ID, int(p))
+	keyboard, err := groupSelectionsKeyboard(c.redis, state, callback.From.ID)
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	prevPage := p - 1
-	nextPage := p + 1
-	if int(p) >= pageCount {
-		nextPage = -1
-	}
-	if p == 1 {
-		prevPage = -1
-	}
-
-	keyboard := createKeyboardForGroupSelections(groups, int(prevPage), int(nextPage))
 	updatedKeyboard := tgbotapi.EditMessageReplyMarkupConfig{
 		BaseEdit: tgbotapi.BaseEdit{
 			ChatID:      callback.Message.Chat.ID,
 			MessageID:   callback.Message.MessageID,
-			ReplyMarkup: &keyboard,
+			ReplyMarkup: keyboard,
 		},
 	}
 	if _, err := c.bot.Send(updatedKeyboard); err != nil {
