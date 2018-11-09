@@ -202,22 +202,6 @@ func (c *commandHandler) groups(message *tgbotapi.Message) {
 
 	if message.Chat.IsPrivate() {
 
-		// MOCK DATA
-		// for i := 1; i < 50; i++ {
-		// 	k := groupKey(int64(i))
-		// 	g := groupSettings{
-		// 		Creator:  i * 200,
-		// 		IsActive: false,
-		// 		ShowWarn: false,
-		// 		Limit:    99,
-		// 		Title:    fmt.Sprintf("گروه شماره %d", i),
-		// 	}
-		// 	c.redis.HMSet(k, g.Map())
-		// 	k = adminKey(98299621)
-		// 	c.redis.SAdd(k, i)
-		// }
-		// MOCK DATA
-
 		state, err := getState(c.redis, message.From.ID)
 		if err != nil {
 			log.Fatal(err)
