@@ -462,6 +462,138 @@ func (c *commandHandler) navigateCallback(callback *tgbotapi.CallbackQuery, to s
 	}
 }
 
+func (c *commandHandler) changeActiveStatus(callback *tgbotapi.CallbackQuery, status string) {
+	log := logrus.WithFields(logrus.Fields{
+		"chat":     callback.From.ID,
+		"changeTo": status,
+		"callback": "gActive",
+	})
+
+	state, err := getState(c.redis, callback.From.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if !state.IsSettings() {
+		log.Warn("cannot modify group active status when state is not settings")
+		response := tgbotapi.NewCallback(callback.ID, "امکان تغییر وضعیت گروه وجود ندارد")
+		if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
+			log.Error(err)
+		} else {
+			log.Info("callback process finished")
+		}
+		return
+	}
+
+	isActive, err := strconv.ParseBool(status)
+	if err != nil {
+		isActive = false
+	}
+
+	if err := changeGroupActiveStatus(c.redis, state.GroupID, isActive); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Infof("isActive successfully changed to %t", isActive)
+
+	group, err := findGroupByID(c.redis, state.GroupID)
+	if err != nil {
+		log.Fatal(err)
+	} else if group == nil {
+		log.Error("group does not exist")
+		return
+	}
+
+	keyboard := createKeyboardForSettings(group)
+	editMsgCfg := tgbotapi.EditMessageReplyMarkupConfig{
+		BaseEdit: tgbotapi.BaseEdit{
+			ChatID:      callback.Message.Chat.ID,
+			MessageID:   callback.Message.MessageID,
+			ReplyMarkup: &keyboard,
+		},
+	}
+
+	if _, err := c.bot.Send(editMsgCfg); err != nil {
+		log.Error(err)
+	} else {
+		log.Info("settings message updated")
+	}
+
+	text := fmt.Sprintf("وضعیت: %s", group.IsActiveFa())
+	response := tgbotapi.NewCallback(callback.ID, text)
+	if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
+		log.Error(err)
+	} else {
+		log.Info("callback process finished")
+	}
+}
+
+func (c *commandHandler) changeShowWarn(callback *tgbotapi.CallbackQuery, showWarn string) {
+	log := logrus.WithFields(logrus.Fields{
+		"chat":     callback.From.ID,
+		"changeTo": showWarn,
+		"callback": "gShowWarn",
+	})
+
+	state, err := getState(c.redis, callback.From.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if !state.IsSettings() {
+		log.Warn("cannot modify group showWarn status when state is not settings")
+		response := tgbotapi.NewCallback(callback.ID, "امکان تغییر وضعیت نمایش اخطار وجود ندارد")
+		if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
+			log.Error(err)
+		} else {
+			log.Info("callback process finished")
+		}
+		return
+	}
+
+	show, err := strconv.ParseBool(showWarn)
+	if err != nil {
+		show = false
+	}
+
+	if err := changeGroupShowWarnStatus(c.redis, state.GroupID, show); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Infof("showWarn successfully changed to %t", show)
+
+	group, err := findGroupByID(c.redis, state.GroupID)
+	if err != nil {
+		log.Fatal(err)
+	} else if group == nil {
+		log.Error("group does not exist")
+		return
+	}
+
+	keyboard := createKeyboardForSettings(group)
+	editMsgCfg := tgbotapi.EditMessageReplyMarkupConfig{
+		BaseEdit: tgbotapi.BaseEdit{
+			ChatID:      callback.Message.Chat.ID,
+			MessageID:   callback.Message.MessageID,
+			ReplyMarkup: &keyboard,
+		},
+	}
+
+	if _, err := c.bot.Send(editMsgCfg); err != nil {
+		log.Error(err)
+	} else {
+		log.Info("settings message updated")
+	}
+
+	text := fmt.Sprintf("نمایش اخطار: %s", group.ShowWarnFa())
+	response := tgbotapi.NewCallback(callback.ID, text)
+	if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
+		log.Error(err)
+	} else {
+		log.Info("callback process finished")
+	}
+}
+
 func (c *commandHandler) HandleCallback(callback tgbotapi.CallbackQuery) {
 	log := logrus.WithFields(logrus.Fields{
 		"chat": callback.From.ID,
@@ -487,6 +619,14 @@ func (c *commandHandler) HandleCallback(callback tgbotapi.CallbackQuery) {
 	case "navigate":
 		log.Info("callback routed to navigateCallback")
 		c.navigateCallback(&callback, data[1])
+		break
+	case "gActive":
+		log.Info("callback routed to changeActiveStatus")
+		c.changeActiveStatus(&callback, data[1])
+		break
+	case "gShowWarn":
+		log.Info("callback routed to changeShowWarn")
+		c.changeShowWarn(&callback, data[1])
 		break
 	}
 }
