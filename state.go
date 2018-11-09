@@ -3,10 +3,13 @@ package bot
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/go-redis/redis"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
+
+const stateExpiry = time.Hour * 6
 
 func stateKey(userID int) string {
 	return fmt.Sprintf("state:%d", userID)
@@ -88,7 +91,10 @@ func getState(conn *redis.Client, userID int) (*State, error) {
 			"id":   "selection",
 			"page": 1,
 		}
-		if err := conn.HMSet(sKey, initState).Err(); err != nil {
+		pipe := conn.Pipeline()
+		pipe.HMSet(sKey, initState)
+		pipe.Expire(sKey, stateExpiry)
+		if _, err := pipe.Exec(); err != nil {
 			return nil, err
 		}
 		stateMap["id"] = "selection"
@@ -105,6 +111,7 @@ func setStateToSelection(conn *redis.Client, userID int) (*State, error) {
 	pipe := conn.Pipeline()
 	pipe.HSet(sKey, "id", "selection")
 	pipe.HDel(sKey, "groupID")
+	pipe.Expire(sKey, stateExpiry)
 	stateMap := pipe.HGetAll(sKey)
 	_, err := pipe.Exec()
 	if err != nil {
@@ -121,7 +128,20 @@ func setStateToSettings(conn *redis.Client, userID int, groupID int64) error {
 		"groupID": groupID,
 	}
 
-	return conn.HMSet(skey, state).Err()
+	pipe := conn.Pipeline()
+	pipe.HMSet(skey, state)
+	pipe.Expire(skey, stateExpiry)
+	_, err := pipe.Exec()
+	return err
+}
+
+func setStatePage(conn *redis.Client, userID int, page int) error {
+	sKey := stateKey(userID)
+	pipe := conn.Pipeline()
+	pipe.HSet(sKey, "page", page)
+	pipe.Expire(sKey, stateExpiry)
+	_, err := pipe.Exec()
+	return err
 }
 
 func groupSelectionsKeyboard(conn *redis.Client, state *State, userID int) (*tgbotapi.InlineKeyboardMarkup, error) {
