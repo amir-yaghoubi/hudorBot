@@ -410,7 +410,8 @@ func (c *commandHandler) selectCallback(callback *tgbotapi.CallbackQuery, groupI
 		log.Error(err)
 	}
 
-	response := tgbotapi.NewCallback(callback.ID, "گروه انتخاب شد")
+	text := fmt.Sprintf("گروه %s انتخاب شد", settings.Title)
+	response := tgbotapi.NewCallback(callback.ID, text)
 	if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
 		log.Error(err)
 	} else {
