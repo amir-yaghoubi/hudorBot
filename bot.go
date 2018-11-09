@@ -281,7 +281,10 @@ func (s *BotService) processLeftUser(message tgbotapi.Message, leftChatMember tg
 
 func (s *BotService) Start(updates <-chan tgbotapi.Update) {
 	for update := range updates {
-		logrus.Infof("new update %+v\n", update)
+		if update.CallbackQuery != nil {
+			go s.commandHandler.HandleCallback(*update.CallbackQuery)
+		}
+
 		if update.Message == nil {
 			continue
 		}
@@ -299,7 +302,7 @@ func (s *BotService) Start(updates <-chan tgbotapi.Update) {
 				continue
 			}
 		}
-		logrus.Info(update.Message.Text)
+
 		if update.Message.IsCommand() {
 			go s.commandHandler.Handle(*update.Message)
 			continue

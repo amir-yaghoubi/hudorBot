@@ -95,21 +95,7 @@ func groupInformations(chatID int64, group *groupSettings, bots []string) tgbota
 	if group == nil {
 		text = "⚠️ در حال حاضر اطلاعاتی از این گروه در دست نیست ⚠️"
 	} else {
-		var activeStatus string
-		var warnStatus string
 		var whitelistedBots string
-
-		if group.IsActive {
-			activeStatus = "❇️ فعال ❇️"
-		} else {
-			activeStatus = "🚫 غیر فعال 🚫"
-		}
-
-		if group.ShowWarn {
-			warnStatus = "❇️ فعال ❇️"
-		} else {
-			warnStatus = "🚫 غیر فعال 🚫"
-		}
 
 		if len(bots) == 0 {
 			whitelistedBots = "🔘 هیچ رباتی مجاز به فعالیت نیست 🔘"
@@ -135,8 +121,31 @@ func groupInformations(chatID int64, group *groupSettings, bots []string) tgbota
 🔹 نمایش اخطار: %s
 🔹 تعداد اخطارها قبل از حذف کاربر: %d بار
 🔹 بات‌های مجاز به فعالیت:
-%s`, group.Title, activeStatus, warnStatus, group.Limit, whitelistedBots)
+%s`, group.Title, group.IsActiveFa(), group.ShowWarnFa(), group.Limit, whitelistedBots)
 	}
 
 	return tgbotapi.NewMessage(chatID, text)
+}
+
+func selectGroupState(chatID int64, keyboard *tgbotapi.InlineKeyboardMarkup) tgbotapi.MessageConfig {
+	text := "💢 گروه مورد نظر خود را انتخاب کنید 💢"
+
+	msg := tgbotapi.NewMessage(chatID, text)
+
+	if keyboard != nil {
+		msg.ReplyMarkup = keyboard
+	}
+	return msg
+}
+
+func settingsState(chatID int64, settings *groupSettings, keyboard *tgbotapi.InlineKeyboardMarkup) tgbotapi.MessageConfig {
+	text := fmt.Sprintf(`گروه: 🔰 %s 🔰
+	تعداد اخطارها قبل از بن کاربر: %d بار`, settings.Title, settings.Limit)
+
+	msg := tgbotapi.NewMessage(chatID, text)
+
+	if keyboard != nil {
+		msg.ReplyMarkup = keyboard
+	}
+	return msg
 }

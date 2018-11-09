@@ -44,7 +44,6 @@ func isGroupActive(conn *redis.Client, chatID int64) (bool, error) {
 }
 
 func findGroupByID(conn *redis.Client, chatID int64) (*groupSettings, error) {
-	// TODO check for empty groupHash and send back error?
 	gpKey := groupKey(chatID)
 	gHash, err := conn.HGetAll(gpKey).Result()
 	if err != nil {
@@ -53,6 +52,7 @@ func findGroupByID(conn *redis.Client, chatID int64) (*groupSettings, error) {
 	if len(gHash) == 0 {
 		return nil, nil
 	}
+
 	groupSettings := newGroupSettings(gHash)
 	return groupSettings, nil
 }
@@ -89,6 +89,11 @@ func newGroupSettings(groupSetting map[string]string) *groupSettings {
 	return gp
 }
 
+type minimalGroup struct {
+	ID    int64
+	Title string
+}
+
 type groupSettings struct {
 	IsActive    bool
 	ShowWarn    bool
@@ -96,6 +101,20 @@ type groupSettings struct {
 	Creator     int
 	Title       string
 	Description string
+}
+
+func (g *groupSettings) IsActiveFa() string {
+	if g.IsActive {
+		return "❇️ فعال ❇️"
+	}
+	return "🚫 غیر فعال 🚫"
+}
+
+func (g *groupSettings) ShowWarnFa() string {
+	if g.ShowWarn {
+		return "❇️ فعال ❇️"
+	}
+	return "🚫 غیر فعال 🚫"
 }
 
 func (g *groupSettings) Map() map[string]interface{} {

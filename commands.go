@@ -1,6 +1,8 @@
 package bot
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/go-redis/redis"
@@ -153,6 +155,93 @@ func (c *commandHandler) settings(message *tgbotapi.Message) {
 		if _, err := c.bot.Send(msg); err != nil {
 			log.Error(err)
 		}
+		return
+	}
+
+	if message.Chat.IsPrivate() {
+		state, err := getState(c.redis, message.From.ID)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if state.IsSelection() {
+			keyboard, err := groupSelectionsKeyboard(c.redis, state, message.From.ID)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			msg := selectGroupState(message.Chat.ID, keyboard)
+			if _, err := c.bot.Send(msg); err != nil {
+				log.Error(err)
+			}
+			return
+		}
+
+		if state.IsSettings() {
+			settings, err := findGroupByID(c.redis, state.GroupID)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			keyboard := createKeyboardForSettings(settings)
+			msg := settingsState(message.Chat.ID, settings, &keyboard)
+			if _, err := c.bot.Send(msg); err != nil {
+				log.Error(err)
+			}
+		}
+		return
+	}
+}
+
+func (c *commandHandler) groups(message *tgbotapi.Message) {
+	log := logrus.WithFields(logrus.Fields{
+		"cmd":  "groups",
+		"from": message.From.ID,
+		"chat": message.Chat.ID,
+	})
+
+	if message.Chat.IsPrivate() {
+
+		// MOCK DATA
+		// for i := 1; i < 50; i++ {
+		// 	k := groupKey(int64(i))
+		// 	g := groupSettings{
+		// 		Creator:  i * 200,
+		// 		IsActive: false,
+		// 		ShowWarn: false,
+		// 		Limit:    99,
+		// 		Title:    fmt.Sprintf("گروه شماره %d", i),
+		// 	}
+		// 	c.redis.HMSet(k, g.Map())
+		// 	k = adminKey(98299621)
+		// 	c.redis.SAdd(k, i)
+		// }
+		// MOCK DATA
+
+		state, err := getState(c.redis, message.From.ID)
+		if err != nil {
+			log.Fatal(err)
+		}
+		log.Infof("user present in state: %s", state.ID)
+
+		if !state.IsSelection() {
+			log.Info("reseting state to selection")
+			if newState, err := setStateToSelection(c.redis, message.From.ID); err != nil {
+				log.Fatal(err)
+			} else {
+				state = newState
+			}
+		}
+
+		keyboard, err := groupSelectionsKeyboard(c.redis, state, message.From.ID)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		msg := selectGroupState(message.Chat.ID, keyboard)
+		if _, err := c.bot.Send(msg); err != nil {
+			log.Error(err)
+		}
 	}
 }
 
@@ -178,10 +267,241 @@ func (c *commandHandler) Handle(message tgbotapi.Message) {
 		c.settings(&message)
 		break
 	case "groups":
+		c.groups(&message)
 		break
 	case "help":
 		break
 	default:
 		log.Info("unknown command")
+	}
+}
+
+func (c *commandHandler) pageCallback(callback *tgbotapi.CallbackQuery, page string) {
+	log := logrus.WithFields(logrus.Fields{
+		"chat":     callback.From.ID,
+		"page":     page,
+		"callback": "page",
+	})
+
+	key := stateKey(callback.From.ID)
+	err := c.redis.HSet(key, "page", page).Err()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Info("user state page changed")
+	p, _ := strconv.ParseInt(page, 10, 64)
+	if p < 1 {
+		p = 1
+	}
+	groups, pageCount, err := adminGroups(c.redis, callback.From.ID, int(p))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	prevPage := p - 1
+	nextPage := p + 1
+	if int(p) >= pageCount {
+		nextPage = -1
+	}
+	if p == 1 {
+		prevPage = -1
+	}
+
+	keyboard := createKeyboardForGroupSelections(groups, int(prevPage), int(nextPage))
+	updatedKeyboard := tgbotapi.EditMessageReplyMarkupConfig{
+		BaseEdit: tgbotapi.BaseEdit{
+			ChatID:      callback.Message.Chat.ID,
+			MessageID:   callback.Message.MessageID,
+			ReplyMarkup: &keyboard,
+		},
+	}
+	if _, err := c.bot.Send(updatedKeyboard); err != nil {
+		log.Error(err)
+	} else {
+		log.Info("callback message updated with new paged groups")
+	}
+
+	text := fmt.Sprintf("صفحه %s", page)
+	response := tgbotapi.NewCallback(callback.ID, text)
+	if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
+		log.Error(err)
+	} else {
+		log.Info("callback process finished")
+	}
+}
+
+func (c *commandHandler) selectCallback(callback *tgbotapi.CallbackQuery, groupID string) {
+	log := logrus.WithFields(logrus.Fields{
+		"chat":     callback.From.ID,
+		"groupID":  groupID,
+		"callback": "select",
+	})
+
+	state, err := getState(c.redis, callback.From.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if !state.IsSelection() {
+		log.Info("skip processing callback, user is not in selection state")
+		response := tgbotapi.NewCallback(callback.ID, "برای تغییر گروه از دکمه بازگشت استفاده کنید.")
+		if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
+			log.Error(err)
+		} else {
+			log.Info("callback process finished")
+		}
+		return
+	}
+
+	aKey := adminKey(callback.From.ID)
+	isValid, err := c.redis.SIsMember(aKey, groupID).Result()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if !isValid {
+		log.Warn("attempt to select group that's no longer related to this user")
+		response := tgbotapi.NewCallback(callback.ID, "گروه مورد نظر یافت نشد!")
+		if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
+			log.Error(err)
+		} else {
+			log.Info("callback process finished")
+		}
+		return
+	}
+
+	gID, err := strconv.ParseInt(groupID, 10, 64)
+	if err != nil {
+		gID = 0
+	}
+
+	settings, err := findGroupByID(c.redis, gID)
+	if err != nil {
+		log.Fatal(err)
+	} else if settings == nil {
+		log.Warn("group does not exists")
+		response := tgbotapi.NewCallback(callback.ID, "گروه مورد نظر یافت نشد!")
+		if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
+			log.Error(err)
+		} else {
+			log.Info("callback process finished")
+		}
+		return
+	}
+
+	err = setStateToSettings(c.redis, callback.From.ID, gID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	log.Infof("successfully moved user state from selection to settings")
+
+	keyboard := createKeyboardForSettings(settings)
+	msg := settingsState(callback.Message.Chat.ID, settings, &keyboard)
+	editMsg := tgbotapi.EditMessageTextConfig{
+		BaseEdit: tgbotapi.BaseEdit{
+			ChatID:      msg.ChatID,
+			MessageID:   callback.Message.MessageID,
+			ReplyMarkup: &keyboard,
+		},
+		Text: msg.Text,
+	}
+	if _, err := c.bot.Send(editMsg); err != nil {
+		log.Error(err)
+	}
+
+	response := tgbotapi.NewCallback(callback.ID, "گروه انتخاب شد")
+	if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
+		log.Error(err)
+	} else {
+		log.Info("callback process finished")
+	}
+}
+
+func (c *commandHandler) navigateCallback(callback *tgbotapi.CallbackQuery, to string) {
+	log := logrus.WithFields(logrus.Fields{
+		"chat":       callback.From.ID,
+		"navigateTo": to,
+		"callback":   "navigate",
+	})
+
+	state, err := getState(c.redis, callback.From.ID)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if !state.canBackTo(to) {
+		log.Warnf("cannot navigate back from %s to %s", state.ID, to)
+		response := tgbotapi.NewCallback(callback.ID, "امکان بازگشت وجود ندارد")
+		if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
+			log.Error(err)
+		} else {
+			log.Info("callback process finished")
+		}
+		return
+	}
+
+	if to == "selection" {
+		state, err := setStateToSelection(c.redis, callback.From.ID)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		log.Info("changed state to selection")
+		keyboard, err := groupSelectionsKeyboard(c.redis, state, callback.From.ID)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		msg := selectGroupState(callback.Message.Chat.ID, keyboard)
+		editMsgCfg := tgbotapi.EditMessageTextConfig{
+			BaseEdit: tgbotapi.BaseEdit{
+				ChatID:      msg.ChatID,
+				MessageID:   callback.Message.MessageID,
+				ReplyMarkup: keyboard,
+			},
+			Text: msg.Text,
+		}
+
+		if _, err := c.bot.Send(editMsgCfg); err != nil {
+			log.Error(err)
+		}
+
+		response := tgbotapi.NewCallback(callback.ID, "بازگشت به "+state.StateFa())
+		if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
+			log.Error(err)
+		} else {
+			log.Info("callback process finished")
+		}
+
+	}
+}
+
+func (c *commandHandler) HandleCallback(callback tgbotapi.CallbackQuery) {
+	log := logrus.WithFields(logrus.Fields{
+		"chat": callback.From.ID,
+		"data": callback.Data,
+	})
+	log.Info("received callback query")
+
+	data := strings.Split(callback.Data, ":")
+	if len(data) != 2 {
+		log.Error("invalid data format")
+		return
+	}
+
+	switch data[0] {
+	case "page":
+		log.Info("callback routed to pageCallback")
+		c.pageCallback(&callback, data[1])
+		break
+	case "select":
+		log.Info("callback routed to selectCallback")
+		c.selectCallback(&callback, data[1])
+		break
+	case "navigate":
+		log.Info("callback routed to navigateCallback")
+		c.navigateCallback(&callback, data[1])
+		break
 	}
 }
