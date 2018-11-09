@@ -165,7 +165,7 @@ func (c *commandHandler) settings(message *tgbotapi.Message) {
 		}
 
 		if state.IsSelection() {
-			keyboard, err := groupSelectionsKeyboard(c.redis, state, message.From.ID)
+			keyboard, err := groupSelectionsKeyboard(c.redis, state.Page, message.From.ID)
 			if err != nil {
 				log.Fatal(err)
 			}
@@ -217,7 +217,7 @@ func (c *commandHandler) groups(message *tgbotapi.Message) {
 			}
 		}
 
-		keyboard, err := groupSelectionsKeyboard(c.redis, state, message.From.ID)
+		keyboard, err := groupSelectionsKeyboard(c.redis, state.Page, message.From.ID)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -278,10 +278,7 @@ func (c *commandHandler) pageCallback(callback *tgbotapi.CallbackQuery, pageStri
 	}
 	log.Info("user state page changed")
 
-	state := &State{
-		Page: int(page),
-	}
-	keyboard, err := groupSelectionsKeyboard(c.redis, state, callback.From.ID)
+	keyboard, err := groupSelectionsKeyboard(c.redis, int(page), callback.From.ID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -426,7 +423,7 @@ func (c *commandHandler) navigateCallback(callback *tgbotapi.CallbackQuery, to s
 		}
 
 		log.Info("changed state to selection")
-		keyboard, err := groupSelectionsKeyboard(c.redis, state, callback.From.ID)
+		keyboard, err := groupSelectionsKeyboard(c.redis, state.Page, callback.From.ID)
 		if err != nil {
 			log.Fatal(err)
 		}

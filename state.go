@@ -144,18 +144,18 @@ func setStatePage(conn *redis.Client, userID int, page int) error {
 	return err
 }
 
-func groupSelectionsKeyboard(conn *redis.Client, state *State, userID int) (*tgbotapi.InlineKeyboardMarkup, error) {
-	groups, pageCount, err := adminGroups(conn, userID, state.Page)
+func groupSelectionsKeyboard(conn *redis.Client, page int, userID int) (*tgbotapi.InlineKeyboardMarkup, error) {
+	groups, pageCount, err := adminGroups(conn, userID, page)
 	if err != nil {
 		return nil, err
 	}
 
-	prevPage := state.Page - 1
-	nextPage := state.Page + 1
-	if state.Page >= pageCount {
+	prevPage := page - 1
+	nextPage := page + 1
+	if page >= pageCount {
 		nextPage = -1
 	}
-	if state.Page == 1 {
+	if page == 1 {
 		prevPage = -1
 	}
 	keyboard := createKeyboardForGroupSelections(groups, int(prevPage), int(nextPage))
