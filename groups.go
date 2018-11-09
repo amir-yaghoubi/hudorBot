@@ -22,6 +22,11 @@ func changeGroupActiveStatus(conn *redis.Client, chatID int64, isActive bool) er
 	return conn.HSet(gpKey, "isActive", isActive).Err()
 }
 
+func changeGroupShowWarnStatus(conn *redis.Client, chatID int64, showWarn bool) error {
+	gpKey := groupKey(chatID)
+	return conn.HSet(gpKey, "showWarn", showWarn).Err()
+}
+
 func groupCreator(conn *redis.Client, chatID int64) (creator int, err error) {
 	gpKey := groupKey(chatID)
 	creator, err = conn.HGet(gpKey, "creator").Int()
