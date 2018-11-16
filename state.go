@@ -57,12 +57,15 @@ func (s *State) StateFa() string {
 	return ""
 }
 
-func (s *State) canBackTo(to string) bool {
+func (s *State) canSetStateTo(to string) bool {
 	switch s.ID {
 	case "selection":
 		return false
 	case "settings":
-		return to == "selection"
+		if to == "selection" || to == "setLimit" || to == "botList" {
+			return true
+		}
+		return false
 	}
 
 	return false
@@ -249,8 +252,8 @@ func createKeyboardForSettings(group *groupSettings) tgbotapi.InlineKeyboardMark
 	toggleButtons := tgbotapi.NewInlineKeyboardRow(showWarnButton, activeButton)
 
 	// ------------- Second row -------------
-	botListButton := tgbotapi.NewInlineKeyboardButtonData("لیست ربات‌ها", "gBot:1")
-	changeLimit := tgbotapi.NewInlineKeyboardButtonData("تغییر تعداد اخطارها", "gSetLimit:")
+	botListButton := tgbotapi.NewInlineKeyboardButtonData("لیست ربات‌ها", "navigate:botList")
+	changeLimit := tgbotapi.NewInlineKeyboardButtonData("تغییر تعداد اخطارها", "navigate:setLimit")
 	secondRow := tgbotapi.NewInlineKeyboardRow(changeLimit, botListButton)
 
 	// ------------- Navigation row -------------

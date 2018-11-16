@@ -295,7 +295,7 @@ func (c *commandHandler) pageCallback(callback *tgbotapi.CallbackQuery, pageStri
 		log.Info("callback message updated with new paged groups")
 	}
 
-	text := fmt.Sprintf("صفحه %s", page)
+	text := fmt.Sprintf("صفحه %d", page)
 	response := tgbotapi.NewCallback(callback.ID, text)
 	if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
 		log.Error(err)
@@ -405,7 +405,7 @@ func (c *commandHandler) navigateCallback(callback *tgbotapi.CallbackQuery, to s
 		log.Fatal(err)
 	}
 
-	if !state.canBackTo(to) {
+	if !state.canSetStateTo(to) {
 		log.Warnf("cannot navigate back from %s to %s", state.ID, to)
 		response := tgbotapi.NewCallback(callback.ID, "امکان بازگشت وجود ندارد")
 		if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
