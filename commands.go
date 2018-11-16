@@ -571,6 +571,39 @@ func (c *commandHandler) changeActiveStatus(callback *tgbotapi.CallbackQuery, st
 		isActive = false
 	}
 
+	var isBotCanOperate bool = false
+
+	// if group is not active we should check for bot permissions
+	if isActive {
+		chatConfig := tgbotapi.ChatConfig{
+			ChatID: state.GroupID,
+		}
+		admins, err := c.bot.GetChatAdministrators(chatConfig)
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		for _, admin := range admins {
+			if admin.User.ID == c.bot.Self.ID && admin.IsAdministrator() && admin.CanRestrictMembers {
+				isBotCanOperate = true
+			}
+		}
+	} else {
+		isBotCanOperate = true
+	}
+
+	if !isBotCanOperate {
+		text := fmt.Sprintf("🔏 نیاز به دسترسی مورد نیاز برای هودور می‌باشد. 🔏")
+		response := tgbotapi.NewCallback(callback.ID, text)
+		if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
+			log.Error(err)
+		} else {
+			log.Info("callback process finished")
+		}
+		return
+	}
+
 	if err := changeGroupActiveStatus(c.redis, state.GroupID, isActive); err != nil {
 		log.Fatal(err)
 	}

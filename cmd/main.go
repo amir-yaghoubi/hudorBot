@@ -28,7 +28,7 @@ func connectToRedis(addr string) *redis.Client {
 	client := redis.NewClient(&redis.Options{
 		DB:       0,
 		Addr:     addr,
-		Password: "",
+		Password: os.Getenv("REDIS_PASSWORD"),
 	})
 	return client
 }
