@@ -177,7 +177,13 @@ func (c *commandHandler) settings(message *tgbotapi.Message) {
 			return
 		}
 
-		if state.IsSettings() {
+		if state.IsSettingsOrAbove() {
+			if !state.IsSettings() {
+				err := setStateToSettings(c.redis, message.From.ID, state.GroupID)
+				if err != nil {
+					log.Fatal(err)
+				}
+			}
 			settings, err := findGroupByID(c.redis, state.GroupID)
 			if err != nil {
 				log.Fatal(err)
@@ -225,6 +231,64 @@ func (c *commandHandler) groups(message *tgbotapi.Message) {
 		msg := selectGroupState(message.Chat.ID, keyboard)
 		if _, err := c.bot.Send(msg); err != nil {
 			log.Error(err)
+		}
+	}
+}
+
+func (c *commandHandler) HandleAnswers(message tgbotapi.Message) {
+	log := logrus.WithFields(logrus.Fields{
+		"from": message.From.ID,
+		"chat": message.Chat.ID,
+		"text": message.Text,
+	})
+
+	if message.Chat.IsPrivate() {
+		state, err := getState(c.redis, message.From.ID)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if state.IsSetLimit() {
+			log.Infof("possible setLimit answer")
+
+			var msg tgbotapi.MessageConfig
+
+			limit, err := strconv.ParseInt(message.Text, 10, 64)
+			if err != nil || limit < 0 || limit > 10 {
+				log.Info("user entered invalid limit")
+				msg = invalidWarnLimit(message.Chat.ID)
+			} else {
+				log.Infof("new limit value is valid, value: %d", limit)
+
+				log.Info("authorizing admin")
+
+				aKey := adminKey(message.From.ID)
+				isValid, err := c.redis.SIsMember(aKey, state.GroupID).Result()
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				if !isValid {
+					log.Infof("this user is not admin of group: %d anymore", state.GroupID)
+					msg = userIsNoLongerAdmin(message.Chat.ID)
+				} else {
+					log.Info("admin is authorized")
+					if err := changeGroupWarnLimit(c.redis, state.GroupID, limit); err != nil {
+						log.Fatal(err)
+					}
+					if err := setStateToSettings(c.redis, message.From.ID, state.GroupID); err != nil {
+						log.Fatal(err)
+					}
+
+					msg = warnLimitChanged(message.Chat.ID, limit)
+				}
+			}
+
+			if _, err := c.bot.Send(msg); err != nil {
+				log.Error(err)
+			}
+
+			return
 		}
 	}
 }
@@ -449,6 +513,33 @@ func (c *commandHandler) navigateCallback(callback *tgbotapi.CallbackQuery, to s
 			log.Info("callback process finished")
 		}
 
+	}
+
+	if to == "setLimit" {
+		_, err := setStateToSetLimit(c.redis, callback.From.ID)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		msg := pleaseProvideLimit(callback.Message.Chat.ID)
+		editMsgCfg := tgbotapi.EditMessageTextConfig{
+			BaseEdit: tgbotapi.BaseEdit{
+				ChatID:    msg.ChatID,
+				MessageID: callback.Message.MessageID,
+			},
+			Text: msg.Text,
+		}
+
+		if _, err := c.bot.Send(editMsgCfg); err != nil {
+			log.Error(err)
+		}
+
+		response := tgbotapi.NewCallback(callback.ID, "")
+		if _, err = c.bot.AnswerCallbackQuery(response); err != nil {
+			log.Error(err)
+		} else {
+			log.Info("callback process finished")
+		}
 	}
 }
 

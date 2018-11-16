@@ -306,6 +306,9 @@ func (s *BotService) Start(updates <-chan tgbotapi.Update) {
 		if update.Message.IsCommand() {
 			go s.commandHandler.Handle(*update.Message)
 			continue
+		} else {
+			go s.commandHandler.HandleAnswers(*update.Message)
+			continue
 		}
 	}
 }

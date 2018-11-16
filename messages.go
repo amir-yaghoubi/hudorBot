@@ -149,3 +149,25 @@ func settingsState(chatID int64, settings *groupSettings, keyboard *tgbotapi.Inl
 	}
 	return msg
 }
+
+func pleaseProvideLimit(chatID int64) tgbotapi.MessageConfig {
+	text := "لطفا یک عدد بین ۱ تا ۱۰ را وارد کنید."
+	return tgbotapi.NewMessage(chatID, text)
+}
+
+func invalidWarnLimit(chatID int64) tgbotapi.MessageConfig {
+	text := `⚠️ مقدار وارد شده صحیح نمی‌باشد ⚠️
+لطفا یک عدد بین ۱ تا ۱۰ وارد نمایید.`
+
+	return tgbotapi.NewMessage(chatID, text)
+}
+
+func warnLimitChanged(chatID int64, newLimit int64) tgbotapi.MessageConfig {
+	text := fmt.Sprintf("تعداد اخطار‌های گروه مورد نظر به %d تغییر پیدا کرد. ✅", newLimit)
+	return tgbotapi.NewMessage(chatID, text)
+}
+
+func userIsNoLongerAdmin(chatID int64) tgbotapi.MessageConfig {
+	text := "🚫 متاسفانه شما دیگر ادمین گروه انتخابی نیستید! 🚫"
+	return tgbotapi.NewMessage(chatID, text)
+}

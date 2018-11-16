@@ -27,6 +27,12 @@ func changeGroupShowWarnStatus(conn *redis.Client, chatID int64, showWarn bool) 
 	return conn.HSet(gpKey, "showWarn", showWarn).Err()
 }
 
+func changeGroupWarnLimit(conn *redis.Client, chatID int64, newLimit int64) error {
+	gpKey := groupKey(chatID)
+	return conn.HSet(gpKey, "limit", newLimit).Err()
+
+}
+
 func groupCreator(conn *redis.Client, chatID int64) (creator int, err error) {
 	gpKey := groupKey(chatID)
 	creator, err = conn.HGet(gpKey, "creator").Int()

@@ -47,6 +47,14 @@ func (s *State) IsSettings() bool {
 	return s.ID == "settings"
 }
 
+func (s *State) IsSetLimit() bool {
+	return s.ID == "setLimit"
+}
+
+func (s *State) IsSettingsOrAbove() bool {
+	return s.IsSettings() || s.IsSetLimit()
+}
+
 func (s *State) StateFa() string {
 	switch s.ID {
 	case "selection":
@@ -106,6 +114,21 @@ func getState(conn *redis.Client, userID int) (*State, error) {
 
 	state := NewState(stateMap)
 	return state, nil
+}
+
+func setStateToSetLimit(conn *redis.Client, userID int) (*State, error) {
+	sKey := stateKey(userID)
+
+	pipe := conn.Pipeline()
+	pipe.HSet(sKey, "id", "setLimit")
+	pipe.Expire(sKey, stateExpiry)
+	stateMap := pipe.HGetAll(sKey)
+	_, err := pipe.Exec()
+	if err != nil {
+		return nil, err
+	}
+	state := NewState(stateMap.Val())
+	return state, err
 }
 
 func setStateToSelection(conn *redis.Client, userID int) (*State, error) {
