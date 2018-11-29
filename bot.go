@@ -142,6 +142,11 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 		if user.ID == s.bot.Self.ID {
 			continue
 		}
+
+		if !user.IsBot {
+			continue
+		}
+
 		log := logrus.WithFields(logrus.Fields{
 			"chat": message.Chat.ID,
 			"from": message.From.ID,
@@ -192,7 +197,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 			if err != nil {
 				log.Fatal(err)
 			}
-			log.Info("deactived group")
+			log.Info("deactivated group")
 			continue
 		}
 
