@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/amir-yaghoobi/telegramBotRemover"
+	bot "github.com/amir-yaghoobi/hudorBot"
 	"github.com/go-redis/redis"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 	"github.com/sirupsen/logrus"

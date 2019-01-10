@@ -1,4 +1,4 @@
-package bot
+package hudorBot
 
 import (
 	"strconv"
@@ -95,6 +95,7 @@ func (s *BotService) kickUser(chatID int64, userID int) (Ok bool, err error) {
 	if response.ErrorCode == 400 {
 		return false, nil
 	}
+
 	return response.Ok, err
 }
 
