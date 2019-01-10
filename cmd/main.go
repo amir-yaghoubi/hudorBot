@@ -10,12 +10,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-/*
-	TODO Cleanup after detecting remove message
-
-*/
-
-// Add goimport on save 👍
 func getEnv(env string) string {
 	val := os.Getenv(env)
 	if val == "" {
@@ -57,6 +51,4 @@ func main() {
 	logrus.Infof("Bot %q started at %s\n", tgBot.Self.UserName, startTime.Format(time.RFC3339))
 	service := bot.NewBotService(rDB, tgBot)
 	service.Start(updates)
-
-	// TODO graceful
 }
