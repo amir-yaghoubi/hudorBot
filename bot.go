@@ -76,10 +76,10 @@ func (s *BotService) initGroup(message tgbotapi.Message) *groupSettings {
 	}
 
 	user := userInfo{
-		ID: creator.ID,
-		UserName: creator.UserName,
-		FirstName: creator.FirstName,
-		LastName: creator.LastName,
+		ID:           creator.ID,
+		UserName:     creator.UserName,
+		FirstName:    creator.FirstName,
+		LastName:     creator.LastName,
 		LanguageCode: creator.LanguageCode,
 	}
 
