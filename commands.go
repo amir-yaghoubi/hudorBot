@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewCommandHandler(conn *redis.Client, bot *tgbotapi.BotAPI) *commandHandler {
+func newCommandHandler(conn *redis.Client, bot *tgbotapi.BotAPI) *commandHandler {
 	return &commandHandler{
 		redis: conn,
 		bot:   bot,
@@ -571,7 +571,7 @@ func (c *commandHandler) changeActiveStatus(callback *tgbotapi.CallbackQuery, st
 		isActive = false
 	}
 
-	var isBotCanOperate bool = false
+	var isBotCanOperate = false
 
 	// if group is not active we should check for bot permissions
 	if isActive {

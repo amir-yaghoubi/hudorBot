@@ -8,8 +8,9 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// NewBotService will create a new BotService
 func NewBotService(redis *redis.Client, bot *tgbotapi.BotAPI) *BotService {
-	commandHandler := NewCommandHandler(redis, bot)
+	commandHandler := newCommandHandler(redis, bot)
 	return &BotService{
 		redis:          redis,
 		bot:            bot,
@@ -17,6 +18,7 @@ func NewBotService(redis *redis.Client, bot *tgbotapi.BotAPI) *BotService {
 	}
 }
 
+// BotService is hudor message processor
 type BotService struct {
 	redis          *redis.Client
 	bot            *tgbotapi.BotAPI
@@ -115,8 +117,6 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 		"from": message.From.ID,
 	})
 
-	wlKey := whiteListKey(message.Chat.ID)
-
 	groupSettings, err := findGroupByID(s.redis, message.Chat.ID)
 	if err != nil {
 		log.Fatal(err)
@@ -139,6 +139,8 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 		return
 	}
 
+	wlKey := whiteListKey(message.Chat.ID)
+
 	for _, user := range users {
 		if user.ID == s.bot.Self.ID {
 			continue
@@ -154,6 +156,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 			"bot":  user.ID,
 		})
 
+		// ---- Adding bot to the whitelist if it were added by creator ----
 		if message.From.ID == groupSettings.Creator {
 			added, err := s.redis.SAdd(wlKey, user.UserName).Result()
 			if err != nil {
@@ -170,6 +173,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 			}
 			continue
 		}
+		// -----------------------------------------------------------------
 
 		if !groupSettings.IsActive {
 			continue
@@ -285,6 +289,7 @@ func (s *BotService) processLeftUser(message tgbotapi.Message, leftChatMember tg
 	}
 }
 
+// Start botService and process update messages and callbacks
 func (s *BotService) Start(updates <-chan tgbotapi.Update) {
 	for update := range updates {
 		if update.CallbackQuery != nil {
