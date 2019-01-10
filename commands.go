@@ -28,6 +28,7 @@ func (c *commandHandler) hudor(message *tgbotapi.Message) {
 		"from": message.From.ID,
 		"chat": message.Chat.ID,
 	})
+
 	if message.Chat.IsSuperGroup() {
 		creator, err := groupCreator(c.redis, message.Chat.ID)
 		if err != nil {

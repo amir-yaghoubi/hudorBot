@@ -48,7 +48,7 @@ func main() {
 
 	startTime := time.Now()
 
-	logrus.Infof("Bot %q started at %s\n", tgBot.Self.UserName, startTime.Format(time.RFC3339))
+	logrus.Infof("bot %q started at %s\n", tgBot.Self.UserName, startTime.Format(time.RFC3339))
 	service := bot.NewBotService(rDB, tgBot)
 	service.Start(updates)
 }

@@ -63,6 +63,7 @@ func (s *BotService) initGroup(message tgbotapi.Message) *groupSettings {
 	}
 
 	gpKey := groupKey(message.Chat.ID)
+	userKey := userInfoKey(creator.ID)
 	adminKey := adminKey(creator.ID)
 
 	settings := groupSettings{
@@ -74,9 +75,18 @@ func (s *BotService) initGroup(message tgbotapi.Message) *groupSettings {
 		Description: message.Chat.Description,
 	}
 
+	user := userInfo{
+		ID: creator.ID,
+		UserName: creator.UserName,
+		FirstName: creator.FirstName,
+		LastName: creator.LastName,
+		LanguageCode: creator.LanguageCode,
+	}
+
 	pipe := s.redis.Pipeline()
 	pipe.SAdd(adminKey, message.Chat.ID)
 	pipe.HMSet(gpKey, settings.Map())
+	pipe.HMSet(userKey, user.Map())
 	_, err = pipe.Exec()
 	if err != nil {
 		log.Fatal(err)
