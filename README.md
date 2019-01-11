@@ -19,16 +19,18 @@ go get -u github.com/amir-yaghoobi/hudorBot/hudor
 
 In order to hudor can operate you must provide a configuration file in one of following paths:
 
-- `/etc/hudor/config.xxx`
-- `$HOME/.hudor/config.xxx`
+- `/etc/hudor/`
+- `$HOME/.hudor/`
 - current directory
+
+File name must be `config.xxx` (`json`, `yml`, `toml`, ...)
 
 ### Example
 
 ```toml
 # config.toml
 
-# Obtain from @botFather
+# Obtain it from @botFather
 # Read more: https://core.telegram.org/bots#3-how-do-i-create-a-bot
 telegramToken = "BOT_TOKEN"
 
@@ -40,9 +42,17 @@ telegramToken = "BOT_TOKEN"
 
 # you can either pass nanoseconds
 # or formatted string like "h|m|s|ms|us|ns"
-# e.g:
+# example:
 #     - 21600000000000 == "6h"
 #     - 604800000000000 == "168h" (1week)
+# 
+# -------------------------------------------------------------------------
+# warn:  after an usual user adding a non whitelisted bot to they group
+#        they will get a warning and default expiry is set to 7 days
+# -------------------------------------------------------------------------
+# state: user state (pv state) and defualt expiry is set to 6 hours
+# -------------------------------------------------------------------------
+
 [expiry]
   warn  = "168h"
   state = "6h"
