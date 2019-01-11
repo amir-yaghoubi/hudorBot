@@ -177,7 +177,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 			"bot":  user.ID,
 		})
 
-		// ---- Adding bot to the whitelist if it were added by creator ----
+		// ---- Adding bot to the whitelist if it was added by creator ----
 		if message.From.ID == groupSettings.Creator {
 			added, err := s.redis.SAdd(wlKey, user.UserName).Result()
 			if err != nil {
@@ -307,6 +307,17 @@ func (s *BotService) processLeftUser(message tgbotapi.Message, leftChatMember tg
 			log.Fatal(err)
 		}
 		log.Info("bot removed from group. srem from whitelist if exists")
+	}
+
+	ok, err := s.deleteMessage(message.Chat.ID, message.MessageID)
+	if err != nil {
+		log.Warn(err)
+	}
+
+	if ok {
+		log.Info("message successfully removed from chat")
+	} else {
+		log.Warn("cannot delete message from group")
 	}
 }
 
