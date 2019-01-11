@@ -1,4 +1,4 @@
-package bot
+package hudorbot
 
 import (
 	"strconv"
@@ -8,16 +8,29 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewBotService(redis *redis.Client, bot *tgbotapi.BotAPI) *BotService {
-	commandHandler := NewCommandHandler(redis, bot)
+var hudorConfig *HudorConfig
+
+// NewBotService will create a new BotService
+func NewBotService(cfg *HudorConfig, bot *tgbotapi.BotAPI) *BotService {
+	hudorConfig = cfg
+
+	redisClient := redis.NewClient(&redis.Options{
+		DB:       cfg.Redis.DB,
+		Addr:     cfg.Redis.Addr(),
+		Password: cfg.Redis.Password,
+	})
+
+	commandHandler := newCommandHandler(redisClient, bot)
 	return &BotService{
-		redis:          redis,
+		redis:          redisClient,
 		bot:            bot,
 		commandHandler: commandHandler,
 	}
 }
 
+// BotService is hudor message processor
 type BotService struct {
+	config         *HudorConfig
 	redis          *redis.Client
 	bot            *tgbotapi.BotAPI
 	commandHandler *commandHandler
@@ -61,6 +74,7 @@ func (s *BotService) initGroup(message tgbotapi.Message) *groupSettings {
 	}
 
 	gpKey := groupKey(message.Chat.ID)
+	userKey := userInfoKey(creator.ID)
 	adminKey := adminKey(creator.ID)
 
 	settings := groupSettings{
@@ -72,9 +86,18 @@ func (s *BotService) initGroup(message tgbotapi.Message) *groupSettings {
 		Description: message.Chat.Description,
 	}
 
+	user := userInfo{
+		ID:           creator.ID,
+		UserName:     creator.UserName,
+		FirstName:    creator.FirstName,
+		LastName:     creator.LastName,
+		LanguageCode: creator.LanguageCode,
+	}
+
 	pipe := s.redis.Pipeline()
 	pipe.SAdd(adminKey, message.Chat.ID)
 	pipe.HMSet(gpKey, settings.Map())
+	pipe.HMSet(userKey, user.Map())
 	_, err = pipe.Exec()
 	if err != nil {
 		log.Fatal(err)
@@ -95,6 +118,7 @@ func (s *BotService) kickUser(chatID int64, userID int) (Ok bool, err error) {
 	if response.ErrorCode == 400 {
 		return false, nil
 	}
+
 	return response.Ok, err
 }
 
@@ -113,8 +137,6 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 		"chat": message.Chat.ID,
 		"from": message.From.ID,
 	})
-
-	wlKey := whiteListKey(message.Chat.ID)
 
 	groupSettings, err := findGroupByID(s.redis, message.Chat.ID)
 	if err != nil {
@@ -138,6 +160,8 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 		return
 	}
 
+	wlKey := whiteListKey(message.Chat.ID)
+
 	for _, user := range users {
 		if user.ID == s.bot.Self.ID {
 			continue
@@ -153,6 +177,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 			"bot":  user.ID,
 		})
 
+		// ---- Adding bot to the whitelist if it was added by creator ----
 		if message.From.ID == groupSettings.Creator {
 			added, err := s.redis.SAdd(wlKey, user.UserName).Result()
 			if err != nil {
@@ -169,6 +194,7 @@ func (s *BotService) processNewUsers(message tgbotapi.Message, users []tgbotapi.
 			}
 			continue
 		}
+		// -----------------------------------------------------------------
 
 		if !groupSettings.IsActive {
 			continue
@@ -282,8 +308,20 @@ func (s *BotService) processLeftUser(message tgbotapi.Message, leftChatMember tg
 		}
 		log.Info("bot removed from group. srem from whitelist if exists")
 	}
+
+	ok, err := s.deleteMessage(message.Chat.ID, message.MessageID)
+	if err != nil {
+		log.Warn(err)
+	}
+
+	if ok {
+		log.Info("message successfully removed from chat")
+	} else {
+		log.Warn("cannot delete message from group")
+	}
 }
 
+// Start botService and process update messages and callbacks
 func (s *BotService) Start(updates <-chan tgbotapi.Update) {
 	for update := range updates {
 		if update.CallbackQuery != nil {

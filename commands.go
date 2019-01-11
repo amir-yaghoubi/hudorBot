@@ -1,4 +1,4 @@
-package bot
+package hudorbot
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewCommandHandler(conn *redis.Client, bot *tgbotapi.BotAPI) *commandHandler {
+func newCommandHandler(conn *redis.Client, bot *tgbotapi.BotAPI) *commandHandler {
 	return &commandHandler{
 		redis: conn,
 		bot:   bot,
@@ -28,6 +28,7 @@ func (c *commandHandler) hudor(message *tgbotapi.Message) {
 		"from": message.From.ID,
 		"chat": message.Chat.ID,
 	})
+
 	if message.Chat.IsSuperGroup() {
 		creator, err := groupCreator(c.redis, message.Chat.ID)
 		if err != nil {
@@ -571,7 +572,7 @@ func (c *commandHandler) changeActiveStatus(callback *tgbotapi.CallbackQuery, st
 		isActive = false
 	}
 
-	var isBotCanOperate bool = false
+	var isBotCanOperate = false
 
 	// if group is not active we should check for bot permissions
 	if isActive {

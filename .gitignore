@@ -13,5 +13,6 @@
 
 config.env
 
+vendor
 .idea
 .vscode

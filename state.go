@@ -1,15 +1,12 @@
-package bot
+package hudorbot
 
 import (
 	"fmt"
 	"strconv"
-	"time"
 
 	"github.com/go-redis/redis"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
 )
-
-const stateExpiry = time.Hour * 6
 
 func stateKey(userID int) string {
 	return fmt.Sprintf("state:%d", userID)
@@ -104,7 +101,7 @@ func getState(conn *redis.Client, userID int) (*State, error) {
 		}
 		pipe := conn.Pipeline()
 		pipe.HMSet(sKey, initState)
-		pipe.Expire(sKey, stateExpiry)
+		pipe.Expire(sKey, hudorConfig.Expiry.State)
 		if _, err := pipe.Exec(); err != nil {
 			return nil, err
 		}
@@ -121,7 +118,7 @@ func setStateToSetLimit(conn *redis.Client, userID int) (*State, error) {
 
 	pipe := conn.Pipeline()
 	pipe.HSet(sKey, "id", "setLimit")
-	pipe.Expire(sKey, stateExpiry)
+	pipe.Expire(sKey, hudorConfig.Expiry.State)
 	stateMap := pipe.HGetAll(sKey)
 	_, err := pipe.Exec()
 	if err != nil {
@@ -137,7 +134,7 @@ func setStateToSelection(conn *redis.Client, userID int) (*State, error) {
 	pipe := conn.Pipeline()
 	pipe.HSet(sKey, "id", "selection")
 	pipe.HDel(sKey, "groupID")
-	pipe.Expire(sKey, stateExpiry)
+	pipe.Expire(sKey, hudorConfig.Expiry.State)
 	stateMap := pipe.HGetAll(sKey)
 	_, err := pipe.Exec()
 	if err != nil {
@@ -156,7 +153,7 @@ func setStateToSettings(conn *redis.Client, userID int, groupID int64) error {
 
 	pipe := conn.Pipeline()
 	pipe.HMSet(skey, state)
-	pipe.Expire(skey, stateExpiry)
+	pipe.Expire(skey, hudorConfig.Expiry.State)
 	_, err := pipe.Exec()
 	return err
 }
@@ -165,7 +162,7 @@ func setStatePage(conn *redis.Client, userID int, page int) error {
 	sKey := stateKey(userID)
 	pipe := conn.Pipeline()
 	pipe.HSet(sKey, "page", page)
-	pipe.Expire(sKey, stateExpiry)
+	pipe.Expire(sKey, hudorConfig.Expiry.State)
 	_, err := pipe.Exec()
 	return err
 }

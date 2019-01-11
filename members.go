@@ -1,8 +1,7 @@
-package bot
+package hudorbot
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/go-redis/redis"
 )
@@ -15,7 +14,7 @@ func incrementMemberWarns(conn *redis.Client, chatID int64, userID int) (int64, 
 	warnKey := membersKey(chatID, userID)
 	incPipe := conn.Pipeline()
 	incWarn := incPipe.Incr(warnKey)
-	incPipe.Expire(warnKey, time.Hour*24*7)
+	incPipe.Expire(warnKey, hudorConfig.Expiry.Warn)
 	_, err := incPipe.Exec()
 	return incWarn.Val(), err
 }
