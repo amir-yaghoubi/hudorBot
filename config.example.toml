@@ -15,5 +15,5 @@ telegramToken = "BOT_TOKEN"
 #     - 21600000000000 == "6h"
 #     - 604800000000000 == "168h" (1week)
 [expiry]
-  state = "16h"
+  state = "6h"
   warn = "168h"
