@@ -49,7 +49,6 @@ func main() {
 	if err != nil {
 		logrus.Fatal(err)
 	}
-	logrus.Infof("%#v\n", *config)
 
 	tgBot, err := tgbotapi.NewBotAPI(config.TelegramToken)
 	if err != nil {
