@@ -1,42 +1,61 @@
 package main
 
 import (
-	"os"
+	"errors"
 	"time"
 
-	bot "github.com/amir-yaghoobi/hudorBot"
-	"github.com/go-redis/redis"
 	"github.com/go-telegram-bot-api/telegram-bot-api"
+
+	bot "github.com/amir-yaghoobi/hudorBot"
+	"github.com/spf13/viper"
+
 	"github.com/sirupsen/logrus"
 )
 
-func getEnv(env string) string {
-	val := os.Getenv(env)
-	if val == "" {
-		logrus.Fatalf("you have to set %s enviroment!\n", env)
-	}
-	return val
-}
+func loadConfigurations() (*bot.HudorConfig, error) {
+	v := viper.New()
 
-func connectToRedis(addr string) *redis.Client {
-	client := redis.NewClient(&redis.Options{
-		DB:       0,
-		Addr:     addr,
-		Password: os.Getenv("REDIS_PASSWORD"),
-	})
-	return client
+	v.SetConfigName("config")
+
+	v.AddConfigPath(".")
+	v.AddConfigPath("$HOME/.hudor")
+	v.AddConfigPath("/etc/hudor/")
+
+	err := v.ReadInConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	logrus.Infof("configuration file: %q", v.ConfigFileUsed())
+
+	config := &bot.HudorConfig{}
+
+	err = v.Unmarshal(config)
+	if err != nil {
+		return nil, err
+	}
+
+	config.Clean()
+
+	if len(config.TelegramToken) == 0 {
+		return nil, errors.New("please provide valid telegramToken in config file")
+	}
+
+	return config, nil
 }
 
 func main() {
-	botToken := getEnv("TG_TOKEN")
+	config, err := loadConfigurations()
+	if err != nil {
+		logrus.Fatal(err)
+	}
+	logrus.Infof("%#v\n", *config)
 
-	tgBot, err := tgbotapi.NewBotAPI(botToken)
+	tgBot, err := tgbotapi.NewBotAPI(config.TelegramToken)
 	if err != nil {
 		logrus.Fatal(err)
 	}
 	tgBot.Debug = false
-
-	rDB := connectToRedis("localhost:6379")
 
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
@@ -49,6 +68,6 @@ func main() {
 	startTime := time.Now()
 
 	logrus.Infof("bot %q started at %s\n", tgBot.Self.UserName, startTime.Format(time.RFC3339))
-	service := bot.NewBotService(rDB, tgBot)
+	service := bot.NewBotService(config, tgBot)
 	service.Start(updates)
 }

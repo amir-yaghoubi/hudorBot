@@ -8,11 +8,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+var hudorConfig *HudorConfig
+
 // NewBotService will create a new BotService
-func NewBotService(redis *redis.Client, bot *tgbotapi.BotAPI) *BotService {
-	commandHandler := newCommandHandler(redis, bot)
+func NewBotService(cfg *HudorConfig, bot *tgbotapi.BotAPI) *BotService {
+	hudorConfig = cfg
+
+	redisClient := redis.NewClient(&redis.Options{
+		DB:       cfg.Redis.DB,
+		Addr:     cfg.Redis.Addr(),
+		Password: cfg.Redis.Password,
+	})
+
+	commandHandler := newCommandHandler(redisClient, bot)
 	return &BotService{
-		redis:          redis,
+		redis:          redisClient,
 		bot:            bot,
 		commandHandler: commandHandler,
 	}
@@ -20,6 +30,7 @@ func NewBotService(redis *redis.Client, bot *tgbotapi.BotAPI) *BotService {
 
 // BotService is hudor message processor
 type BotService struct {
+	config         *HudorConfig
 	redis          *redis.Client
 	bot            *tgbotapi.BotAPI
 	commandHandler *commandHandler
