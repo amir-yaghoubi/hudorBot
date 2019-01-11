@@ -19,8 +19,8 @@ go get -u github.com/amir-yaghoobi/hudorBot/hudor
 
 In order to hudor can operate you must provide a configuration file in one of following paths:
 
-- `/etc/hudor/`
-- `$HOME/.hudor`
+- `/etc/hudor/config.xxx`
+- `$HOME/.hudor/config.xxx`
 - current directory
 
 ### Example
