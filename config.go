@@ -28,7 +28,7 @@ func (rCfg *RedisConfig) Addr() string {
 // 	 they will get a warning and default expiry is set to 7 days
 type ExpiresConfig struct {
 	State time.Duration `mapstructure:"state"`
-	Warn  time.Duration `mapstructure:"Warn"`
+	Warn  time.Duration `mapstructure:"warn"`
 }
 
 // HudorConfig contains whole hudor configurations

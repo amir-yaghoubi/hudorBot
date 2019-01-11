@@ -1,0 +1,19 @@
+
+# Obtain from @botFather
+# Read more: https://core.telegram.org/bots#3-how-do-i-create-a-bot
+telegramToken = "BOT_TOKEN"
+
+[redis]
+  db = 0
+  port = 6379
+  hostname = "localhost"
+  password = ""
+
+# you can either pass nanoseconds
+# or formatted string like "h|m|s|ms|us|ns"
+# e.g:
+#     - 21600000000000 == "6h"
+#     - 604800000000000 == "168h" (1week)
+[expiry]
+  state = "16h"
+  warn = "168h"
